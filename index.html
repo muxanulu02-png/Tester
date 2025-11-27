@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тренажер для сессии (Word + картинки)</title>
-    <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <title>Тренажер для сессии - Выбор теста</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +19,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
             background: white;
             border-radius: 15px;
@@ -47,19 +46,58 @@
             display: block;
         }
 
-        .upload-area {
-            border: 3px dashed #3498db;
-            border-radius: 10px;
-            padding: 40px;
+        .tests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .test-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
             text-align: center;
-            margin: 20px 0;
             cursor: pointer;
             transition: all 0.3s;
         }
 
-        .upload-area:hover {
-            background: #f8f9fa;
-            border-color: #2980b9;
+        .test-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #3498db;
+            background: white;
+        }
+
+        .test-card.selected {
+            border-color: #27ae60;
+            background: #e8f6f3;
+        }
+
+        .test-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .test-info {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .test-stats {
+            display: flex;
+            justify-content: space-around;
+            font-size: 12px;
+            color: #95a5a6;
         }
 
         .btn {
@@ -83,6 +121,12 @@
             background: #bdc3c7;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            font-size: 18px;
+            padding: 15px 40px;
         }
 
         .question-image {
@@ -149,31 +193,23 @@
             transition: width 0.3s;
         }
 
-        .loading {
+        .test-description {
             text-align: center;
+            margin: 20px 0;
             padding: 20px;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 2s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .demo-questions {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
+            background: #e8f4fd;
             border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .shuffle-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            color: #856404;
         }
     </style>
 </head>
@@ -181,60 +217,41 @@
     <div class="container">
         <div class="header">
             <h1>🎓 Тренажер для сессии</h1>
-            <p>Загрузи Word файл с вопросами и картинками</p>
+            <p>Выбери тест для подготовки - варианты ответов перемешиваются!</p>
         </div>
 
         <div class="content">
-            <!-- Экран загрузки -->
-            <div id="uploadScreen" class="screen active">
-                <h2>Загрузка вопросов из Word</h2>
-                <p>Поддерживаются вопросы с картинками! Формат: вопрос (может быть с картинкой), варианты ответов, правильный ответ - вариант А</p>
+            <!-- Экран выбора теста -->
+            <div id="selectScreen" class="screen active">
+                <h2>Доступные тесты</h2>
                 
-                <div class="upload-area" id="uploadArea">
-                    <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
-                    <h3>Перетащи Word файл сюда</h3>
-                    <p>или нажми для выбора файла</p>
-                    <input type="file" id="fileInput" accept=".docx" style="display: none;">
+                <div class="test-description">
+                    <strong>⚡ Варианты ответов перемешиваются!</strong><br>
+                    Правильный ответ может быть под любой буквой - учись понимать суть, а не запоминать позиции!
                 </div>
 
-                <div id="loading" class="loading" style="display: none;">
-                    <div class="spinner"></div>
-                    <p>Обрабатываю Word файл...</p>
+                <div class="tests-grid" id="testsGrid">
+                    <!-- Тесты будут добавляться здесь через JavaScript -->
                 </div>
 
-                <div id="fileInfo" style="display: none; text-align: center; margin: 20px 0;">
-                    <p>✅ Успешно загружено вопросов: <span id="questionCount">0</span></p>
-                    <p>📷 Найдено картинок: <span id="imagesCount">0</span></p>
-                </div>
-
-                <div style="text-align: center;">
-                    <button class="btn" id="startBtn" disabled>Начать тест</button>
-                    <button class="btn" id="demoBtn">Демо с картинками</button>
-                </div>
-
-                <div class="demo-questions">
-                    <h4>📝 Пример формата в Word:</h4>
-                    <p><strong>1. Вопрос с картинкой?</strong></p>
-                    <p>[Здесь картинка в Word]</p>
-                    <p>A) Правильный ответ</p>
-                    <p>B) Неправильный ответ</p>
-                    <p>C) Еще один ответ</p>
-                    <br>
-                    <p><strong>2. Обычный вопрос?</strong></p>
-                    <p>A) Правильный ответ</p>
-                    <p>B) Другой вариант</p>
-                    <p style="color: #666; font-size: 14px; margin-top: 10px;">* Правильный ответ всегда вариант А</p>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-start" id="startTestBtn" disabled>Начать выбранный тест</button>
                 </div>
             </div>
 
             <!-- Экран теста -->
             <div id="testScreen" class="screen">
                 <div style="text-align: center; margin: 20px 0;">
+                    <div id="testName" style="font-size: 18px; font-weight: 600; color: #2c3e50;"></div>
                     Вопрос <span id="currentQuestion">1</span> из <span id="totalQuestions">20</span>
                 </div>
                 
                 <div class="progress-bar">
                     <div class="progress" id="progressBar"></div>
+                </div>
+
+                <div class="shuffle-notice">
+                    🔀 Варианты ответов перемешаны! Ищи правильный ответ по смыслу, а не по букве.
                 </div>
 
                 <div class="question-container">
@@ -253,6 +270,8 @@
             <div id="resultsScreen" class="screen">
                 <div style="text-align: center;">
                     <h2>Результаты теста</h2>
+                    <div id="resultTestName" style="font-size: 16px; color: #7f8c8d; margin-bottom: 20px;"></div>
+                    
                     <div style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 0 auto 30px; font-size: 24px; font-weight: bold;">
                         <span id="scorePercent">0%</span>
                         <span style="font-size: 16px; font-weight: normal;">правильно</span>
@@ -262,7 +281,7 @@
                     
                     <div style="margin-top: 30px;">
                         <button class="btn" id="restartBtn">Пройти еще раз</button>
-                        <button class="btn" id="newTestBtn">Новый тест</button>
+                        <button class="btn" id="newTestBtn">Выбрать другой тест</button>
                     </div>
                 </div>
             </div>
@@ -272,32 +291,22 @@
     <script>
         class QuizApp {
             constructor() {
+                this.tests = [];
+                this.selectedTest = null;
                 this.questions = [];
                 this.currentQuestionIndex = 0;
                 this.score = 0;
                 this.userAnswers = [];
-                this.totalQuestions = 10;
+                this.totalQuestions = 20;
                 this.correctAnswersMap = [];
                 
                 this.initializeEventListeners();
+                this.loadAvailableTests();
             }
 
             initializeEventListeners() {
-                // Загрузка файла
-                document.getElementById('uploadArea').addEventListener('click', () => {
-                    document.getElementById('fileInput').click();
-                });
-
-                document.getElementById('fileInput').addEventListener('change', (e) => {
-                    this.handleFileUpload(e.target.files[0]);
-                });
-
-                document.getElementById('startBtn').addEventListener('click', () => {
-                    this.startTest();
-                });
-
-                document.getElementById('demoBtn').addEventListener('click', () => {
-                    this.loadDemoQuestionsWithImages();
+                document.getElementById('startTestBtn').addEventListener('click', () => {
+                    this.startSelectedTest();
                 });
 
                 document.getElementById('nextBtn').addEventListener('click', () => {
@@ -309,139 +318,209 @@
                 });
 
                 document.getElementById('restartBtn').addEventListener('click', () => {
-                    this.startTest();
+                    this.startSelectedTest();
                 });
 
                 document.getElementById('newTestBtn').addEventListener('click', () => {
-                    this.showScreen('uploadScreen');
-                });
-
-                // Drag and drop
-                this.setupDragAndDrop();
-            }
-
-            setupDragAndDrop() {
-                const uploadArea = document.getElementById('uploadArea');
-                
-                uploadArea.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    uploadArea.style.background = '#e8f4fd';
-                    uploadArea.style.borderColor = '#2980b9';
-                });
-
-                uploadArea.addEventListener('dragleave', (e) => {
-                    e.preventDefault();
-                    uploadArea.style.background = '';
-                    uploadArea.style.borderColor = '#3498db';
-                });
-
-                uploadArea.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    uploadArea.style.background = '';
-                    uploadArea.style.borderColor = '#3498db';
-                    
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        this.handleFileUpload(files[0]);
-                    }
+                    this.showScreen('selectScreen');
                 });
             }
 
-            async handleFileUpload(file) {
-                if (!file || !file.name.endsWith('.docx')) {
-                    alert('Пожалуйста, выберите файл в формате .docx');
-                    return;
-                }
-
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('fileInfo').style.display = 'none';
-                document.getElementById('startBtn').disabled = true;
-
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
-                    
-                    // Здесь будет парсинг HTML и извлечение вопросов с картинками
-                    // Пока просто используем демо-вопросы
-                    setTimeout(() => {
-                        this.loadDemoQuestionsWithImages();
-                        document.getElementById('loading').style.display = 'none';
-                    }, 1500);
-                    
-                } catch (error) {
-                    console.error('Error processing Word file:', error);
-                    alert('Ошибка при обработке Word файла. Используются демо-вопросы.');
-                    this.loadDemoQuestionsWithImages();
-                    document.getElementById('loading').style.display = 'none';
-                }
-            }
-
-            loadDemoQuestionsWithImages() {
-                // Демо-вопросы с картинками
-                this.questions = [
+            loadAvailableTests() {
+                this.tests = [
                     {
-                        question: "Какая из этих фигур является квадратом?",
-                        image: "https://via.placeholder.com/300x150/3498db/ffffff?text=Квадрат+А",
-                        options: [
-                            "Фигура A",
-                            "Фигура B", 
-                            "Фигура C",
-                            "Фигура D"
+                        id: 1,
+                        name: "📊 Тест по математике",
+                        description: "Алгебра, геометрия, основы анализа",
+                        icon: "🧮",
+                        questions: 45,
+                        time: "30 мин",
+                        questions: [
+                            {
+                                question: "Чему равно 2 + 2 × 2?",
+                                options: ["6", "8", "4", "10"],
+                                correctAnswer: "6"
+                            },
+                            {
+                                question: "Что такое гипотенуза?",
+                                options: [
+                                    "Сторона прямоугольного треугольника",
+                                    "Угол в треугольнике", 
+                                    "Периметр круга",
+                                    "Диаметр окружности"
+                                ],
+                                correctAnswer: "Сторона прямоугольного треугольника"
+                            },
+                            {
+                                question: "Формула дискриминанта?",
+                                options: [
+                                    "b² - 4ac",
+                                    "a² + b²", 
+                                    "2πr",
+                                    "(a+b)²"
+                                ],
+                                correctAnswer: "b² - 4ac"
+                            },
+                            {
+                                question: "Чему равно π (пи) с точностью до двух знаков?",
+                                options: ["3.14", "2.71", "1.41", "1.61"],
+                                correctAnswer: "3.14"
+                            }
                         ]
                     },
                     {
-                        question: "Определите тип данного графика:",
-                        image: "https://via.placeholder.com/400x200/e74c3c/ffffff?text=График+Б",
-                        options: [
-                            "Линейный график",
-                            "Столбчатая диаграмма",
-                            "Круговая диаграмма",
-                            "Точечная диаграмма"
+                        id: 2,
+                        name: "💻 Тест по программированию",
+                        description: "Основы алгоритмов и языков программирования",
+                        icon: "👨‍💻",
+                        questions: 35,
+                        time: "25 мин",
+                        questions: [
+                            {
+                                question: "Что такое переменная в программировании?",
+                                options: [
+                                    "Именованная ячейка памяти",
+                                    "Тип данных", 
+                                    "Функция",
+                                    "Цикл"
+                                ],
+                                correctAnswer: "Именованная ячейка памяти"
+                            },
+                            {
+                                question: "Какой язык используется для веб-страниц?",
+                                options: ["HTML", "Python", "C++", "Java"],
+                                correctAnswer: "HTML"
+                            },
+                            {
+                                question: "Что означает ООП?",
+                                options: [
+                                    "Объектно-ориентированное программирование",
+                                    "Операционная система программ",
+                                    "Основы обработки процессов",
+                                    "Общая организация памяти"
+                                ],
+                                correctAnswer: "Объектно-ориентированное программирование"
+                            }
                         ]
                     },
                     {
-                        question: "Что изображено на схеме?",
-                        image: "https://via.placeholder.com/350x200/2ecc71/ffffff?text=Схема+В",
-                        options: [
-                            "Электрическая схема",
-                            "Схема метро",
-                            "Архитектурный план",
-                            "Блок-схема алгоритма"
+                        id: 3,
+                        name: "🌍 Тест по географии",
+                        description: "Страны, столицы, физическая география",
+                        icon: "🗺️",
+                        questions: 50,
+                        time: "35 мин",
+                        questions: [
+                            {
+                                question: "Столица Австралии?",
+                                options: ["Канберра", "Сидней", "Мельбурн", "Перт"],
+                                correctAnswer: "Канберра"
+                            },
+                            {
+                                question: "Самая длинная река в мире?",
+                                options: ["Нил", "Амазонка", "Янцзы", "Миссисипи"],
+                                correctAnswer: "Нил"
+                            },
+                            {
+                                question: "Самая высокая гора в мире?",
+                                options: ["Эверест", "Килиманджаро", "Монблан", "Эльбрус"],
+                                correctAnswer: "Эверест"
+                            }
                         ]
                     },
                     {
-                        question: "Какой это химический элемент?",
-                        options: [
-                            "Кислород",
-                            "Водород",
-                            "Углерод",
-                            "Азот"
+                        id: 4,
+                        name: "📚 Тест по литературе",
+                        description: "Классическая и современная литература",
+                        icon: "📖",
+                        questions: 40,
+                        time: "30 мин",
+                        questions: [
+                            {
+                                question: "Автор 'Войны и мира'?",
+                                options: ["Лев Толстой", "Фёдор Достоевский", "Антон Чехов", "Иван Тургенев"],
+                                correctAnswer: "Лев Толстой"
+                            },
+                            {
+                                question: "Кто написал 'Гамлета'?",
+                                options: ["Шекспир", "Данте", "Гёте", "Байрон"],
+                                correctAnswer: "Шекспир"
+                            },
+                            {
+                                question: "Главный герой 'Евгения Онегина'?",
+                                options: ["Евгений Онегин", "Александр Пушкин", "Владимир Ленский", "Пётр Гринёв"],
+                                correctAnswer: "Евгений Онегин"
+                            }
                         ]
                     },
                     {
-                        question: "Какая геометрическая фигура изображена?",
-                        image: "https://via.placeholder.com/300x300/9b59b6/ffffff?text=Треугольник",
-                        options: [
-                            "Треугольник",
-                            "Квадрат",
-                            "Круг",
-                            "Прямоугольник"
+                        id: 5,
+                        name: "🔬 Тест по биологии",
+                        description: "Ботаника, зоология, анатомия",
+                        icon: "🔬",
+                        questions: 55,
+                        time: "40 мин",
+                        questions: [
+                            {
+                                question: "Сколько хромосом у человека?",
+                                options: ["46", "23", "48", "52"],
+                                correctAnswer: "46"
+                            },
+                            {
+                                question: "Что такое митоз?",
+                                options: [
+                                    "Деление клетки",
+                                    "Фотосинтез", 
+                                    "Дыхание",
+                                    "Питание"
+                                ],
+                                correctAnswer: "Деление клетки"
+                            },
+                            {
+                                question: "Какой орган отвечает за кровообращение?",
+                                options: ["Сердце", "Печень", "Лёгкие", "Почки"],
+                                correctAnswer: "Сердце"
+                            }
                         ]
                     }
                 ];
 
-                document.getElementById('questionCount').textContent = this.questions.length;
-                const imagesCount = this.questions.filter(q => q.image).length;
-                document.getElementById('imagesCount').textContent = imagesCount;
+                this.renderTestsGrid();
+            }
+
+            renderTestsGrid() {
+                const grid = document.getElementById('testsGrid');
+                grid.innerHTML = '';
+
+                this.tests.forEach(test => {
+                    const testCard = document.createElement('div');
+                    testCard.className = 'test-card';
+                    testCard.innerHTML = `
+                        <div class="test-icon">${test.icon}</div>
+                        <div class="test-title">${test.name}</div>
+                        <div class="test-info">${test.description}</div>
+                        <div class="test-stats">
+                            <span>❓ ${test.questions} вопросов</span>
+                            <span>⏱️ ${test.time}</span>
+                        </div>
+                    `;
+                    
+                    testCard.addEventListener('click', () => {
+                        this.selectTest(test);
+                    });
+                    
+                    grid.appendChild(testCard);
+                });
+            }
+
+            selectTest(test) {
+                document.querySelectorAll('.test-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
                 
-                document.getElementById('fileInfo').style.display = 'block';
-                document.getElementById('startBtn').disabled = false;
-                
-                // Показываем информацию о загруженном файле
-                document.querySelector('#uploadScreen h2').textContent = 'Файл загружен!';
-                document.querySelector('#uploadScreen p').innerHTML = 
-                    '✅ <strong>Демо-режим:</strong> В реальном приложении здесь будут твои вопросы из Word<br>' +
-                    '📷 <strong>Картинки:</strong> Поддержка изображений из Word файла';
+                event.currentTarget.classList.add('selected');
+                this.selectedTest = test;
+                document.getElementById('startTestBtn').disabled = false;
             }
 
             shuffleArray(array) {
@@ -453,7 +532,10 @@
                 return shuffled;
             }
 
-            startTest() {
+            startSelectedTest() {
+                if (!this.selectedTest) return;
+                
+                this.questions = this.selectedTest.questions;
                 this.currentQuestionIndex = 0;
                 this.score = 0;
                 this.userAnswers = [];
@@ -463,6 +545,9 @@
                 this.showQuestion();
                 this.showScreen('testScreen');
                 this.updateProgress();
+                
+                document.getElementById('testName').textContent = this.selectedTest.name;
+                document.getElementById('resultTestName').textContent = this.selectedTest.name;
             }
 
             getRandomQuestions() {
@@ -470,15 +555,19 @@
                 const selected = shuffled.slice(0, this.totalQuestions);
                 
                 return selected.map(question => {
-                    const originalCorrectAnswer = question.options[0];
+                    const originalCorrectAnswer = question.correctAnswer;
+                    
+                    // Перемешиваем варианты ответов
                     const shuffledOptions = this.shuffleArray(question.options);
+                    
+                    // Находим новый индекс правильного ответа после перемешивания
                     const newCorrectIndex = shuffledOptions.indexOf(originalCorrectAnswer);
                     
+                    // Сохраняем правильный индекс для этого вопроса
                     this.correctAnswersMap.push(newCorrectIndex);
                     
                     return {
                         question: question.question,
-                        image: question.image,
                         options: shuffledOptions,
                         correctIndex: newCorrectIndex
                     };
@@ -488,14 +577,6 @@
             showQuestion() {
                 const questionData = this.testQuestions[this.currentQuestionIndex];
                 document.getElementById('questionText').textContent = questionData.question;
-                
-                // Показываем картинку, если есть
-                const imageContainer = document.getElementById('questionImageContainer');
-                if (questionData.image) {
-                    imageContainer.innerHTML = `<img src="${questionData.image}" alt="Иллюстрация" class="question-image">`;
-                } else {
-                    imageContainer.innerHTML = '';
-                }
                 
                 const optionsContainer = document.getElementById('optionsContainer');
                 optionsContainer.innerHTML = '';
@@ -580,7 +661,6 @@
             }
         }
 
-        // Запускаем приложение
         document.addEventListener('DOMContentLoaded', () => {
             new QuizApp();
         });
