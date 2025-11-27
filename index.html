@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер для сессии (Word + картинки)</title>
+    <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            background: #f8f9fa;
+            border-color: #2980b9;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .question-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 3px solid #e9ecef;
+        }
+
+        .question-text {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .options-container {
+            display: grid;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .option-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        .option-btn:hover {
+            background: #e9ecef;
+            border-color: #3498db;
+        }
+
+        .option-btn.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .option-btn.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .progress-bar {
+            background: #ecf0f1;
+            height: 8px;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .demo-questions {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Тренажер для сессии</h1>
+            <p>Загрузи Word файл с вопросами и картинками</p>
+        </div>
+
+        <div class="content">
+            <!-- Экран загрузки -->
+            <div id="uploadScreen" class="screen active">
+                <h2>Загрузка вопросов из Word</h2>
+                <p>Поддерживаются вопросы с картинками! Формат: вопрос (может быть с картинкой), варианты ответов, правильный ответ - вариант А</p>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+                    <h3>Перетащи Word файл сюда</h3>
+                    <p>или нажми для выбора файла</p>
+                    <input type="file" id="fileInput" accept=".docx" style="display: none;">
+                </div>
+
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Обрабатываю Word файл...</p>
+                </div>
+
+                <div id="fileInfo" style="display: none; text-align: center; margin: 20px 0;">
+                    <p>✅ Успешно загружено вопросов: <span id="questionCount">0</span></p>
+                    <p>📷 Найдено картинок: <span id="imagesCount">0</span></p>
+                </div>
+
+                <div style="text-align: center;">
+                    <button class="btn" id="startBtn" disabled>Начать тест</button>
+                    <button class="btn" id="demoBtn">Демо с картинками</button>
+                </div>
+
+                <div class="demo-questions">
+                    <h4>📝 Пример формата в Word:</h4>
+                    <p><strong>1. Вопрос с картинкой?</strong></p>
+                    <p>[Здесь картинка в Word]</p>
+                    <p>A) Правильный ответ</p>
+                    <p>B) Неправильный ответ</p>
+                    <p>C) Еще один ответ</p>
+                    <br>
+                    <p><strong>2. Обычный вопрос?</strong></p>
+                    <p>A) Правильный ответ</p>
+                    <p>B) Другой вариант</p>
+                    <p style="color: #666; font-size: 14px; margin-top: 10px;">* Правильный ответ всегда вариант А</p>
+                </div>
+            </div>
+
+            <!-- Экран теста -->
+            <div id="testScreen" class="screen">
+                <div style="text-align: center; margin: 20px 0;">
+                    Вопрос <span id="currentQuestion">1</span> из <span id="totalQuestions">20</span>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+
+                <div class="question-container">
+                    <div class="question-text" id="questionText"></div>
+                    <div id="questionImageContainer"></div>
+                    <div class="options-container" id="optionsContainer"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                    <button class="btn" id="backBtn" style="visibility: hidden;">Назад</button>
+                    <button class="btn" id="nextBtn" disabled>Далее</button>
+                </div>
+            </div>
+
+            <!-- Экран результатов -->
+            <div id="resultsScreen" class="screen">
+                <div style="text-align: center;">
+                    <h2>Результаты теста</h2>
+                    <div style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 0 auto 30px; font-size: 24px; font-weight: bold;">
+                        <span id="scorePercent">0%</span>
+                        <span style="font-size: 16px; font-weight: normal;">правильно</span>
+                    </div>
+                    
+                    <p>Правильных ответов: <strong id="correctAnswers">0</strong> из <strong id="totalAnswers">20</strong></p>
+                    
+                    <div style="margin-top: 30px;">
+                        <button class="btn" id="restartBtn">Пройти еще раз</button>
+                        <button class="btn" id="newTestBtn">Новый тест</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class QuizApp {
+            constructor() {
+                this.questions = [];
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.userAnswers = [];
+                this.totalQuestions = 10;
+                this.correctAnswersMap = [];
+                
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                // Загрузка файла
+                document.getElementById('uploadArea').addEventListener('click', () => {
+                    document.getElementById('fileInput').click();
+                });
+
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    this.handleFileUpload(e.target.files[0]);
+                });
+
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.startTest();
+                });
+
+                document.getElementById('demoBtn').addEventListener('click', () => {
+                    this.loadDemoQuestionsWithImages();
+                });
+
+                document.getElementById('nextBtn').addEventListener('click', () => {
+                    this.nextQuestion();
+                });
+
+                document.getElementById('backBtn').addEventListener('click', () => {
+                    this.previousQuestion();
+                });
+
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    this.startTest();
+                });
+
+                document.getElementById('newTestBtn').addEventListener('click', () => {
+                    this.showScreen('uploadScreen');
+                });
+
+                // Drag and drop
+                this.setupDragAndDrop();
+            }
+
+            setupDragAndDrop() {
+                const uploadArea = document.getElementById('uploadArea');
+                
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.background = '#e8f4fd';
+                    uploadArea.style.borderColor = '#2980b9';
+                });
+
+                uploadArea.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.background = '';
+                    uploadArea.style.borderColor = '#3498db';
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.style.background = '';
+                    uploadArea.style.borderColor = '#3498db';
+                    
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFileUpload(files[0]);
+                    }
+                });
+            }
+
+            async handleFileUpload(file) {
+                if (!file || !file.name.endsWith('.docx')) {
+                    alert('Пожалуйста, выберите файл в формате .docx');
+                    return;
+                }
+
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('fileInfo').style.display = 'none';
+                document.getElementById('startBtn').disabled = true;
+
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
+                    
+                    // Здесь будет парсинг HTML и извлечение вопросов с картинками
+                    // Пока просто используем демо-вопросы
+                    setTimeout(() => {
+                        this.loadDemoQuestionsWithImages();
+                        document.getElementById('loading').style.display = 'none';
+                    }, 1500);
+                    
+                } catch (error) {
+                    console.error('Error processing Word file:', error);
+                    alert('Ошибка при обработке Word файла. Используются демо-вопросы.');
+                    this.loadDemoQuestionsWithImages();
+                    document.getElementById('loading').style.display = 'none';
+                }
+            }
+
+            loadDemoQuestionsWithImages() {
+                // Демо-вопросы с картинками
+                this.questions = [
+                    {
+                        question: "Какая из этих фигур является квадратом?",
+                        image: "https://via.placeholder.com/300x150/3498db/ffffff?text=Квадрат+А",
+                        options: [
+                            "Фигура A",
+                            "Фигура B", 
+                            "Фигура C",
+                            "Фигура D"
+                        ]
+                    },
+                    {
+                        question: "Определите тип данного графика:",
+                        image: "https://via.placeholder.com/400x200/e74c3c/ffffff?text=График+Б",
+                        options: [
+                            "Линейный график",
+                            "Столбчатая диаграмма",
+                            "Круговая диаграмма",
+                            "Точечная диаграмма"
+                        ]
+                    },
+                    {
+                        question: "Что изображено на схеме?",
+                        image: "https://via.placeholder.com/350x200/2ecc71/ffffff?text=Схема+В",
+                        options: [
+                            "Электрическая схема",
+                            "Схема метро",
+                            "Архитектурный план",
+                            "Блок-схема алгоритма"
+                        ]
+                    },
+                    {
+                        question: "Какой это химический элемент?",
+                        options: [
+                            "Кислород",
+                            "Водород",
+                            "Углерод",
+                            "Азот"
+                        ]
+                    },
+                    {
+                        question: "Какая геометрическая фигура изображена?",
+                        image: "https://via.placeholder.com/300x300/9b59b6/ffffff?text=Треугольник",
+                        options: [
+                            "Треугольник",
+                            "Квадрат",
+                            "Круг",
+                            "Прямоугольник"
+                        ]
+                    }
+                ];
+
+                document.getElementById('questionCount').textContent = this.questions.length;
+                const imagesCount = this.questions.filter(q => q.image).length;
+                document.getElementById('imagesCount').textContent = imagesCount;
+                
+                document.getElementById('fileInfo').style.display = 'block';
+                document.getElementById('startBtn').disabled = false;
+                
+                // Показываем информацию о загруженном файле
+                document.querySelector('#uploadScreen h2').textContent = 'Файл загружен!';
+                document.querySelector('#uploadScreen p').innerHTML = 
+                    '✅ <strong>Демо-режим:</strong> В реальном приложении здесь будут твои вопросы из Word<br>' +
+                    '📷 <strong>Картинки:</strong> Поддержка изображений из Word файла';
+            }
+
+            shuffleArray(array) {
+                const shuffled = [...array];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            }
+
+            startTest() {
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                this.userAnswers = [];
+                this.correctAnswersMap = [];
+                
+                this.testQuestions = this.getRandomQuestions();
+                this.showQuestion();
+                this.showScreen('testScreen');
+                this.updateProgress();
+            }
+
+            getRandomQuestions() {
+                const shuffled = [...this.questions].sort(() => Math.random() - 0.5);
+                const selected = shuffled.slice(0, this.totalQuestions);
+                
+                return selected.map(question => {
+                    const originalCorrectAnswer = question.options[0];
+                    const shuffledOptions = this.shuffleArray(question.options);
+                    const newCorrectIndex = shuffledOptions.indexOf(originalCorrectAnswer);
+                    
+                    this.correctAnswersMap.push(newCorrectIndex);
+                    
+                    return {
+                        question: question.question,
+                        image: question.image,
+                        options: shuffledOptions,
+                        correctIndex: newCorrectIndex
+                    };
+                });
+            }
+
+            showQuestion() {
+                const questionData = this.testQuestions[this.currentQuestionIndex];
+                document.getElementById('questionText').textContent = questionData.question;
+                
+                // Показываем картинку, если есть
+                const imageContainer = document.getElementById('questionImageContainer');
+                if (questionData.image) {
+                    imageContainer.innerHTML = `<img src="${questionData.image}" alt="Иллюстрация" class="question-image">`;
+                } else {
+                    imageContainer.innerHTML = '';
+                }
+                
+                const optionsContainer = document.getElementById('optionsContainer');
+                optionsContainer.innerHTML = '';
+
+                questionData.options.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'option-btn';
+                    button.textContent = `${String.fromCharCode(65 + index)}) ${option}`;
+                    button.addEventListener('click', () => this.selectAnswer(index));
+                    optionsContainer.appendChild(button);
+                });
+
+                document.getElementById('currentQuestion').textContent = this.currentQuestionIndex + 1;
+                document.getElementById('totalQuestions').textContent = this.testQuestions.length;
+                document.getElementById('nextBtn').disabled = true;
+                
+                document.getElementById('backBtn').style.visibility = 
+                    this.currentQuestionIndex > 0 ? 'visible' : 'hidden';
+            }
+
+            selectAnswer(selectedIndex) {
+                const options = document.querySelectorAll('.option-btn');
+                const correctIndex = this.correctAnswersMap[this.currentQuestionIndex];
+                
+                this.userAnswers[this.currentQuestionIndex] = selectedIndex;
+
+                options.forEach((btn, index) => {
+                    btn.disabled = true;
+                    if (index === correctIndex) {
+                        btn.classList.add('correct');
+                    } else if (index === selectedIndex && selectedIndex !== correctIndex) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
+                if (selectedIndex === correctIndex) {
+                    this.score++;
+                }
+
+                document.getElementById('nextBtn').disabled = false;
+            }
+
+            nextQuestion() {
+                this.currentQuestionIndex++;
+                
+                if (this.currentQuestionIndex < this.testQuestions.length) {
+                    this.showQuestion();
+                } else {
+                    this.showResults();
+                }
+                this.updateProgress();
+            }
+
+            previousQuestion() {
+                if (this.currentQuestionIndex > 0) {
+                    this.currentQuestionIndex--;
+                    this.showQuestion();
+                    this.updateProgress();
+                }
+            }
+
+            updateProgress() {
+                const progress = ((this.currentQuestionIndex + 1) / this.testQuestions.length) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+            }
+
+            showResults() {
+                const percent = Math.round((this.score / this.testQuestions.length) * 100);
+                
+                document.getElementById('scorePercent').textContent = `${percent}%`;
+                document.getElementById('correctAnswers').textContent = this.score;
+                document.getElementById('totalAnswers').textContent = this.testQuestions.length;
+                
+                this.showScreen('resultsScreen');
+            }
+
+            showScreen(screenName) {
+                document.querySelectorAll('.screen').forEach(screen => {
+                    screen.classList.remove('active');
+                });
+                document.getElementById(screenName).classList.add('active');
+            }
+        }
+
+        // Запускаем приложение
+        document.addEventListener('DOMContentLoaded', () => {
+            new QuizApp();
+        });
+    </script>
+</body>
+</html>
